@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="el">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#24483f">
+  <title>Ωράριο εργασίας | Καταχώριση</title>
+  <style>
+    :root { font-family:system-ui,-apple-system,"Segoe UI",sans-serif; color:#1c3932; background:#f4f6f3; }
+    * { box-sizing:border-box; }
+    body { margin:0; }
+    header { background:#24483f; color:#fff; padding:42px 20px 36px; }
+    .wrap { width:min(100% - 32px,640px); margin:auto; }
+    .eyebrow { color:#bde2ce; font-size:.75rem; font-weight:700; letter-spacing:.13em; text-transform:uppercase; margin:0 0 9px; }
+    h1 { font-size:clamp(2rem,5vw,3rem); line-height:1.1; letter-spacing:-.04em; margin:0; }
+    header p:last-child { color:#dceae2; margin:12px 0 0; line-height:1.5; }
+    main { padding:26px 0 50px; }
+    .card { background:#fff; border:1px solid #dce7df; border-radius:18px; box-shadow:0 12px 40px #1536260d; padding:clamp(20px,5vw,34px); }
+    form { display:grid; gap:19px; }
+    label { display:block; margin:0 0 7px; font-weight:700; }
+    input,select { width:100%; min-height:48px; border:1px solid #b7cbc0; border-radius:9px; padding:10px 13px; background:#fff; color:#173a2d; font:inherit; }
+    input:focus-visible,select:focus-visible,button:focus-visible { outline:3px solid #7abf9c; outline-offset:2px; }
+    .times { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    .result { border:1px solid #b9dbc8; border-radius:12px; background:#edf7f0; padding:18px 20px; }
+    .result span { display:block; color:#335c45; font-weight:700; }
+    .result-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+    .result-grid > div + div { border-left:1px solid #b9dbc8; padding-left:20px; }
+    output { display:block; font-size:clamp(2rem,6vw,2.75rem); font-weight:800; letter-spacing:-.04em; line-height:1.2; margin-top:5px; }
+    .hint { margin:5px 0 0; font-size:.9rem; color:#456450; }
+    button { min-height:50px; background:#24483f; color:#fff; font:inherit; font-weight:750; border:0; border-radius:9px; padding:12px 20px; cursor:pointer; }
+    button:hover { background:#356956; }
+    button:disabled { opacity:.6; cursor:wait; }
+    .status { min-height:1.5em; margin:0; line-height:1.5; }
+    .status.error { color:#a02b2b; }
+    .status.success { color:#176441; }
+    .fallback { margin:18px 2px 0; color:#566f61; line-height:1.6; }
+    a { color:#1b644c; font-weight:700; }
+    @media(max-width:480px) { header { padding:32px 16px; } .times { grid-template-columns:1fr; } .result-grid { gap:12px; } .result-grid > div + div { padding-left:12px; } }
+  </style>
+</head>
+<body>
+  <header><div class="wrap">
+    <p class="eyebrow">Καταχώριση</p>
+    <h1>Ωράριο εργασίας</h1>
+    <p>Συμπλήρωσε το ωράριο και δες τις ώρες εργασίας πριν από την υποβολή.</p>
+  </div></header>
+  <main class="wrap">
+    <div class="card">
+      <form id="schedule-form" action="https://docs.google.com/forms/d/e/1FAIpQLSfvlAYIxoOw-YjAg68krYh7ehHtaGXGNNHTq-bvwjyc72I4dQ/formResponse" method="post" target="_blank" rel="noopener">
+        <div><label for="work-date">Ημερομηνία *</label><input id="work-date" name="date" type="date" required></div>
+        <div>
+          <label for="employee">Εργαζόμενος *</label>
+          <select id="employee" required aria-describedby="employee-hint"></select>
+          <p class="hint" id="employee-hint">Επίλεξε όνομα από τη λίστα ή «Νέος εργαζόμενος».</p>
+          <div id="new-employee-field" hidden>
+            <label for="new-employee" style="margin-top:14px">Νέο ονοματεπώνυμο *</label>
+            <input id="new-employee" type="text" maxlength="120" autocomplete="name">
+          </div>
+        </div>
+        <div class="times">
+          <div><label for="start">Ώρα έναρξης *</label><input id="start" name="start" type="time" required></div>
+          <div><label for="end">Ώρα λήξης *</label><input id="end" name="end" type="time" required></div>
+        </div>
+        <div class="result" aria-live="polite">
+          <div class="result-grid">
+            <div><span>Ώρες εργασίας</span><output id="duration" for="start end">—</output></div>
+            <div><span>Ώρες πληρωμής</span><output id="paid-duration" for="start end">—</output></div>
+          </div>
+          <p class="hint" id="duration-hint">Συμπλήρωσε ώρα έναρξης και λήξης.</p>
+        </div>
+        <button type="submit" id="submit">Υποβολή</button>
+        <p class="status" id="status" role="status" aria-live="polite"></p>
+      </form>
+    </div>
+    <p class="fallback">Με την υποβολή ανοίγει η επιβεβαίωση της Google Form σε νέα καρτέλα. Έλεγξε ότι εμφανίζεται μήνυμα καταχώρισης. Μπορείς επίσης να <a href="https://docs.google.com/forms/d/e/1FAIpQLSfvlAYIxoOw-YjAg68krYh7ehHtaGXGNNHTq-bvwjyc72I4dQ/viewform" target="_blank" rel="noopener noreferrer">ανοίξεις την Google Form</a>.</p>
+  </main>
+  <script>
+    const form = document.getElementById('schedule-form');
+    const start = document.getElementById('start');
+    const end = document.getElementById('end');
+    const duration = document.getElementById('duration');
+    const paidDuration = document.getElementById('paid-duration');
+    const hint = document.getElementById('duration-hint');
+    const status = document.getElementById('status');
+    const workDate = document.getElementById('work-date');
+    const employee = document.getElementById('employee');
+    const newEmployeeField = document.getElementById('new-employee-field');
+    const newEmployee = document.getElementById('new-employee');
+    const savedNamesKey = 'orario-ergasias-employee-names';
+    const initialNames = [
+      'ΑΡΓΥΡΩ ΑΘΑΝΑΣΑ',
+      'ΕΥΣΤΡΑΤΙΟΣ ΚΟΛΛΙΟΣ',
+      'ΠΑΝΑΓΙΩΤΗΣ ΚΟΛΛΙΟΣ',
+      'ΠΑΤΕΡΑΚΗΣ ΔΗΜΗΤΡΙΟΣ'
+    ];
+
+    function storedNames() {
+      try {
+        const names = JSON.parse(localStorage.getItem(savedNamesKey) || '[]');
+        return Array.isArray(names) ? names.filter(name => typeof name === 'string') : [];
+      } catch { return []; }
+    }
+
+    function showNames(names) {
+      const unique = [...new Set(names.map(name => name.trim()).filter(Boolean))];
+      const current = employee.value;
+      const placeholder = new Option('Επίλεξε εργαζόμενο', '');
+      placeholder.disabled = true;
+      const options = unique.map(name => {
+        const option = document.createElement('option');
+        option.value = name;
+        option.textContent = name;
+        return option;
+      });
+      employee.replaceChildren(placeholder, ...options, new Option('＋ Νέος εργαζόμενος', '__new__'));
+      employee.value = current || '';
+    }
+
+    showNames([...initialNames, ...storedNames()]);
+    employee.addEventListener('change', () => {
+      const isNew = employee.value === '__new__';
+      newEmployeeField.hidden = !isNew;
+      newEmployee.required = isNew;
+      newEmployee.setCustomValidity('');
+      if (isNew) newEmployee.focus();
+    });
+    newEmployee.addEventListener('input', () => newEmployee.setCustomValidity(''));
+
+    function rememberName(name) {
+      const names = [...initialNames, ...storedNames()];
+      if (!names.some(saved => saved.localeCompare(name, 'el', { sensitivity: 'base' }) === 0)) names.push(name);
+      showNames(names);
+      try { localStorage.setItem(savedNamesKey, JSON.stringify(names)); } catch { /* Storage can be disabled. */ }
+    }
+
+    function minutes(value) {
+      if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(value)) return null;
+      const [hours, mins] = value.split(':').map(Number);
+      return hours * 60 + mins;
+    }
+
+    function formatDuration(total) {
+      return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+    }
+
+    function updateDuration() {
+      const from = minutes(start.value);
+      const to = minutes(end.value);
+      if (from === null || to === null) {
+        duration.value = '—';
+        paidDuration.value = '—';
+        hint.textContent = 'Συμπλήρωσε ώρα έναρξης και λήξης.';
+        return;
+      }
+      const total = (to - from + 1440) % 1440;
+      duration.value = formatDuration(total);
+      paidDuration.value = formatDuration(Math.round(total / 15) * 15);
+      hint.textContent = to < from
+        ? 'Η λήξη υπολογίζεται την επόμενη ημέρα. Η πληρωμή στρογγυλοποιείται στο πλησιέστερο 15λεπτο.'
+        : 'Η πληρωμή στρογγυλοποιείται στο πλησιέστερο 15λεπτο.';
+    }
+
+    start.addEventListener('input', updateDuration);
+    end.addEventListener('input', updateDuration);
+    form.addEventListener('input', () => { status.textContent = ''; status.className = 'status'; });
+
+    form.addEventListener('submit', event => {
+      form.querySelectorAll('[data-google-field]').forEach(field => field.remove());
+      const selectedName = employee.value === '__new__' ? newEmployee.value.trim() : employee.value;
+      if (!selectedName) {
+        event.preventDefault();
+        newEmployee.setCustomValidity('Συμπλήρωσε το ονοματεπώνυμο.');
+        newEmployee.reportValidity();
+        return;
+      }
+      newEmployee.setCustomValidity('');
+      if (employee.value === '__new__') rememberName(selectedName);
+      const [year, month, day] = workDate.value.split('-');
+      const [startHour, startMinute] = start.value.split(':');
+      const [endHour, endMinute] = end.value.split(':');
+      const fields = {
+        'entry.1536766606_year': year,
+        'entry.1536766606_month': String(Number(month)),
+        'entry.1536766606_day': String(Number(day)),
+        'entry.583823459': selectedName,
+        'entry.1890602341_hour': String(Number(startHour)),
+        'entry.1890602341_minute': startMinute,
+        'entry.2088125975_hour': String(Number(endHour)),
+        'entry.2088125975_minute': endMinute,
+        fvv: '1',
+        pageHistory: '0'
+      };
+      for (const [name, value] of Object.entries(fields)) {
+        const field = document.createElement('input');
+        field.type = 'hidden';
+        field.name = name;
+        field.value = value;
+        field.dataset.googleField = '';
+        form.append(field);
+      }
+      status.className = 'status';
+      status.textContent = 'Έλεγξε τη νέα καρτέλα για την επιβεβαίωση της καταχώρισης.';
+    });
+  </script>
+</body>
+</html>
