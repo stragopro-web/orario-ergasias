@@ -52,6 +52,8 @@
           <label for="employee">Εργαζόμενος *</label>
           <select id="employee" required aria-describedby="employee-hint"></select>
           <p class="hint" id="employee-hint">Επίλεξε όνομα από τη λίστα ή «Νέος εργαζόμενος».</p>
+          <p class="hint" id="employee-sync-status" role="status" aria-live="polite"></p>
+          <button type="button" id="refresh-employees" style="min-height:36px;padding:7px 12px;font-size:.85rem">Ανανέωση ονομάτων</button>
           <div id="new-employee-field" hidden>
             <label for="new-employee" style="margin-top:14px">Νέο ονοματεπώνυμο *</label>
             <input id="new-employee" type="text" maxlength="120" autocomplete="name">
@@ -116,7 +118,49 @@
       employee.value = current || '';
     }
 
-    showNames([...initialNames, ...storedNames()]);
+    let directoryNames = [...initialNames, ...storedNames()];
+    let syncingNames = false;
+    const syncStatus = document.getElementById('employee-sync-status');
+    const refreshNames = document.getElementById('refresh-employees');
+    showNames(directoryNames);
+
+    async function syncNames() {
+      if (syncingNames) return;
+      syncingNames = true;
+      refreshNames.disabled = true;
+      syncStatus.textContent = 'Ενημέρωση λίστας εργαζομένων…';
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+      try {
+        const response = await fetch('/api/employees', { cache: 'no-store', signal: controller.signal });
+        if (!response.ok) throw new Error('Directory unavailable');
+        const data = await response.json();
+        if (!Array.isArray(data.names) || data.names.some(name => typeof name !== 'string')) {
+          throw new Error('Invalid directory');
+        }
+        directoryNames = data.names;
+        // Preserve an active selection while the user is filling the form.
+        const selected = employee.value;
+        showNames(selected && selected !== '__new__' ? [...directoryNames, selected] : directoryNames);
+        try { localStorage.setItem(savedNamesKey, JSON.stringify(directoryNames)); } catch {}
+        syncStatus.textContent = 'Η λίστα ενημερώθηκε από τις καταχωρίσεις.';
+      } catch {
+        syncStatus.textContent = 'Δεν έγινε ενημέρωση. Εμφανίζονται τα αποθηκευμένα ονόματα· πάτησε «Ανανέωση ονομάτων» για νέα προσπάθεια.';
+      } finally {
+        clearTimeout(timeout);
+        syncingNames = false;
+        refreshNames.disabled = false;
+      }
+    }
+    refreshNames.addEventListener('click', syncNames);
+    window.addEventListener('focus', syncNames);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') syncNames();
+    });
+    setInterval(() => {
+      if (document.visibilityState === 'visible') syncNames();
+    }, 60000);
+    syncNames();
     employee.addEventListener('change', () => {
       const isNew = employee.value === '__new__';
       newEmployeeField.hidden = !isNew;
@@ -127,8 +171,9 @@
     newEmployee.addEventListener('input', () => newEmployee.setCustomValidity(''));
 
     function rememberName(name) {
-      const names = [...initialNames, ...storedNames()];
+      const names = [...directoryNames];
       if (!names.some(saved => saved.localeCompare(name, 'el', { sensitivity: 'base' }) === 0)) names.push(name);
+      directoryNames = names;
       showNames(names);
       try { localStorage.setItem(savedNamesKey, JSON.stringify(names)); } catch { /* Storage can be disabled. */ }
     }
